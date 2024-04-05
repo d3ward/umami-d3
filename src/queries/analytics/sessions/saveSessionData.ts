@@ -1,6 +1,6 @@
 import { DATA_TYPE } from 'lib/constants';
 import { uuid } from 'lib/crypto';
-import { flattenJSON } from 'lib/data';
+import { flattenJSON, getStringValue } from 'lib/data';
 import prisma from 'lib/prisma';
 import { DynamicData } from 'lib/types';
 
@@ -14,20 +14,15 @@ export async function saveSessionData(data: {
 
   const jsonKeys = flattenJSON(sessionData);
 
-  const flattendData = jsonKeys.map(a => ({
+  const flattenedData = jsonKeys.map(a => ({
     id: uuid(),
     websiteId,
     sessionId,
     key: a.key,
-    stringValue:
-      a.dynamicDataType === DATA_TYPE.number
-        ? parseFloat(a.value).toFixed(4)
-        : a.dynamicDataType === DATA_TYPE.date
-        ? a.value.split('.')[0] + 'Z'
-        : a.value.toString(),
-    numberValue: a.dynamicDataType === DATA_TYPE.number ? a.value : null,
-    dateValue: a.dynamicDataType === DATA_TYPE.date ? new Date(a.value) : null,
-    dataType: a.dynamicDataType,
+    stringValue: getStringValue(a.value, a.dataType),
+    numberValue: a.dataType === DATA_TYPE.number ? a.value : null,
+    dateValue: a.dataType === DATA_TYPE.date ? new Date(a.value) : null,
+    dataType: a.dataType,
   }));
 
   return transaction([
@@ -37,7 +32,7 @@ export async function saveSessionData(data: {
       },
     }),
     client.sessionData.createMany({
-      data: flattendData as any,
+      data: flattenedData as any,
     }),
   ]);
 }
